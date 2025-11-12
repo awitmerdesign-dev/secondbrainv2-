@@ -1,234 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <meta name="theme-color" content="#6ab7ff">
-    <meta name="description" content="ADHD-friendly personal organizer with reminders, bills, notes, and secure password vault">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Second Brain</title>
-    <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-</head>
-<body>
-    <div id="app">
-        <header>
-            <h1>🧠 Second Brain</h1>
-        </header>
+// SecondBrainV2 – GitHub Pages build
+const CACHE = 'secondbrainv2-cache-v2'; // bump version when you change assets
+const ASSETS = [
+  './',
+  'index.html',
+  'style.css',
+  'script.js',
+  'manifest.json',
+  'icons/icon-192.png',
+  'icons/icon-512.png'
+];
 
-        <nav id="main-nav">
-            <button class="nav-btn active" data-tab="today">
-                <span class="nav-icon">📋</span>
-                <span class="nav-label">Today</span>
-            </button>
-            <button class="nav-btn" data-tab="bills">
-                <span class="nav-icon">💰</span>
-                <span class="nav-label">Bills</span>
-            </button>
-            <button class="nav-btn" data-tab="vault">
-                <span class="nav-icon">🔐</span>
-                <span class="nav-label">Vault</span>
-            </button>
-            <button class="nav-btn" data-tab="focus">
-                <span class="nav-icon">🧘</span>
-                <span class="nav-label">Focus</span>
-            </button>
-            <button class="nav-btn" data-tab="settings">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-label">Settings</span>
-            </button>
-        </nav>
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  self.skipWaiting();
+});
 
-        <main id="main-content">
-            <!-- TODAY TAB -->
-            <section id="today-tab" class="tab-content active">
-                <div class="tab-header">
-                    <h2>Today</h2>
-                    <button id="add-task-btn" class="primary-btn fab">+</button>
-                </div>
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE ? caches.delete(k) : null)))
+    )
+  );
+  self.clients.claim();
+});
 
-                <div class="filter-bar">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="today">Today</button>
-                    <button class="filter-btn" data-filter="upcoming">Upcoming</button>
-                    <button class="filter-btn" data-filter="completed">Completed</button>
-                </div>
-
-                <div id="tasks-list" class="content-list"></div>
-            </section>
-
-            <!-- BILLS & REPEATS TAB -->
-            <section id="bills-tab" class="tab-content">
-                <div class="tab-header">
-                    <h2>Bills & Repeats</h2>
-                    <div class="header-actions">
-                        <button id="export-bills-btn" class="secondary-btn">Export CSV</button>
-                        <button id="add-bill-btn" class="primary-btn">+ Bill</button>
-                    </div>
-                </div>
-
-                <div class="filter-bar">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="unpaid">Unpaid</button>
-                    <button class="filter-btn" data-filter="paid">Paid</button>
-                    <button class="filter-btn" data-filter="autopay">Auto Pay</button>
-                </div>
-
-                <div id="bills-list" class="content-list"></div>
-            </section>
-
-            <!-- VAULT TAB -->
-            <section id="vault-tab" class="tab-content">
-                <div id="vault-locked" class="vault-lock-screen">
-                    <div class="lock-content">
-                        <div class="lock-icon">🔒</div>
-                        <h2>Secure Vault</h2>
-                        <p>Enter your master password to unlock</p>
-                        <form id="vault-unlock-form">
-                            <input type="password" id="master-password" placeholder="Master Password" autocomplete="current-password" required>
-                            <button type="submit" class="primary-btn">Unlock</button>
-                        </form>
-                        <p class="vault-hint">First time? Just create a password and it will be saved securely.</p>
-                    </div>
-                </div>
-
-                <div id="vault-unlocked" class="vault-unlocked-view" style="display: none;">
-                    <div class="tab-header">
-                        <h2>🔓 Password Vault</h2>
-                        <div class="header-actions">
-                            <button id="lock-vault-btn" class="secondary-btn">Lock</button>
-                            <button id="add-password-btn" class="primary-btn">+ Password</button>
-                        </div>
-                    </div>
-
-                    <div class="vault-sub-nav">
-                        <button class="sub-nav-btn active" data-subtab="passwords">Passwords</button>
-                        <button class="sub-nav-btn" data-subtab="export">Export/Import</button>
-                        <button class="sub-nav-btn" data-subtab="vault-settings">Settings</button>
-                    </div>
-
-                    <div id="vault-passwords" class="vault-subtab active">
-                        <div class="search-bar">
-                            <input type="text" id="vault-search" placeholder="🔍 Search passwords...">
-                        </div>
-                        <div id="passwords-table" class="passwords-table"></div>
-                    </div>
-
-                    <div id="vault-export" class="vault-subtab">
-                        <div class="card">
-                            <h3>Export Vault</h3>
-                            <p>Download your vault data in encrypted or CSV format</p>
-                            <div class="button-group">
-                                <button id="export-encrypted-btn" class="primary-btn">Export Encrypted (.svault)</button>
-                                <button id="export-csv-btn" class="secondary-btn">Export CSV (Plaintext)</button>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <h3>Import Vault</h3>
-                            <p>Import passwords from CSV file</p>
-                            <input type="file" id="import-csv-input" accept=".csv" style="display: none;">
-                            <button id="import-csv-btn" class="secondary-btn">Import CSV</button>
-                        </div>
-                    </div>
-
-                    <div id="vault-vault-settings" class="vault-subtab">
-                        <div class="card">
-                            <h3>Security Settings</h3>
-                            <div class="setting-row">
-                                <label for="auto-lock-timeout">Auto-lock timeout (minutes)</label>
-                                <input type="number" id="auto-lock-timeout" min="1" max="60" value="5">
-                            </div>
-                            <div class="setting-row">
-                                <label for="clipboard-timeout">Clear clipboard after (seconds)</label>
-                                <input type="number" id="clipboard-timeout" min="10" max="120" value="25">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- FOCUS RESET TAB -->
-            <section id="focus-tab" class="tab-content">
-                <div class="focus-container">
-                    <h2>Focus Reset</h2>
-                    <p>Take a moment to breathe and reset your focus</p>
-                    <button id="start-focus-btn" class="primary-btn large-btn">Start Focus Reset</button>
-                </div>
-            </section>
-
-            <!-- SETTINGS TAB -->
-            <section id="settings-tab" class="tab-content">
-                <div class="settings-container">
-                    <h2>Settings</h2>
-
-                    <div class="card">
-                        <h3>Appearance</h3>
-                        <div class="setting-row">
-                            <label>Theme</label>
-                            <div class="theme-selector">
-                                <button class="theme-btn" data-theme="light">☀️ Light</button>
-                                <button class="theme-btn active" data-theme="auto">🌓 Auto</button>
-                                <button class="theme-btn" data-theme="dark">🌙 Dark</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <h3>Notifications</h3>
-                        <div class="setting-row">
-                            <label>Bill Reminders</label>
-                            <button id="enable-notifications-btn" class="secondary-btn">Enable Notifications</button>
-                        </div>
-                        <p id="notification-status" class="status-text"></p>
-                    </div>
-
-                    <div class="card">
-                        <h3>Data Management</h3>
-                        <div class="button-group">
-                            <button id="export-all-btn" class="secondary-btn">Export All Data</button>
-                            <button id="import-all-btn" class="secondary-btn">Import Data</button>
-                        </div>
-                        <input type="file" id="import-all-input" accept=".json" style="display: none;">
-                    </div>
-
-                    <div class="card">
-                        <h3>About</h3>
-                        <p><strong>Second Brain</strong> v1.0</p>
-                        <p>Your ADHD-friendly personal organizer</p>
-                        <p>All data is stored locally on your device</p>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- MODALS -->
-        <div id="modal-overlay" class="modal-overlay">
-            <div id="modal-content" class="modal-content"></div>
-        </div>
-
-        <div id="focus-overlay" class="focus-overlay"></div>
-
-        <div id="toast-container" class="toast-container"></div>
-    </div>
-
-    <script src="js/utils.js"></script>
-    <script src="js/db.js"></script>
-    <script src="js/crypto.js"></script>
-    <script src="js/tasks.js"></script>
-    <script src="js/bills.js"></script>
-    <script src="js/vault.js"></script>
-    <script src="js/focus.js"></script>
-    <script src="js/settings.js"></script>
-    <script src="js/script.js"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .catch(err => console.error('SW reg failed', err));
-        });
-      }
-    </script>
-</body>
-</html>
+self.addEventListener('fetch', (e) => {
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      const fetchPromise = fetch(e.request)
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+          return resp;
+        })
+        .catch(() => cached || caches.match('index.html'));
+      return cached || fetchPromise;
+    })
+  );
+});
